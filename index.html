@@ -1312,7 +1312,7 @@ function closeSetupModal() {
 // ========================================
 
 function autoSave() {
-    const content = activeEditor.innerHTML;
+    const content = currentEditor.innerHTML;
     
     showSaveStatus('saving');
     
@@ -1486,7 +1486,7 @@ function setDailyGoal() {
     dailyWordGoal = goal;
     localStorage.setItem('focusWriterDailyGoal', dailyWordGoal);
     
-    const activeEditor = currentEditor;
+    const currentEditor = currentEditor;
     const text = currentEditor.innerText || currentEditor.textContent || '';
     const currentWords = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
     
