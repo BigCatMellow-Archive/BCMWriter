@@ -1312,7 +1312,8 @@ function closeSetupModal() {
 // ========================================
 
 function autoSave() {
-    const content = currentEditor.innerHTML;
+    const editor = document.getElementById('editor');
+	const content = editor.innerHTML;
     
     showSaveStatus('saving');
     
