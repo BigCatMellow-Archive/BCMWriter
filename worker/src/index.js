@@ -5,17 +5,8 @@ export default {
       return await handleRequest(request, env, ctx);
     } catch (error) {
       console.error('❌ WORKER CRASH:', error);
-      return new Response(JSON.stringify({ 
-        error: 'worker_crash', 
-        message: error.message,
-        stack: error.stack 
-      }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      });
+      // Do not expose stack traces or exception messages over the public API.
+      return jsonResponse({ error: 'internal_error' }, 500);
     }
   }
 };
@@ -37,10 +28,12 @@ async function handleRequest(request, env, ctx) {
     'http://127.0.0.1:8788'
   ];
   
-  // Check if request origin is allowed, if not use first allowed origin
-  const allowOrigin = (requestOrigin && allowedOrigins.includes(requestOrigin)) 
-    ? requestOrigin 
-    : 'https://bigcatmellow.github.io';
+  // A browser script from another origin must not use the token API.
+  // OAuth's top-level navigations normally have no Origin header.
+  if (requestOrigin && !allowedOrigins.includes(requestOrigin)) {
+    return jsonResponse({ error: 'origin_not_allowed' }, 403);
+  }
+  const allowOrigin = requestOrigin || 'https://bigcatmellow.github.io';
   
   console.log('✅ Allowing Origin:', allowOrigin);
 
@@ -48,7 +41,8 @@ async function handleRequest(request, env, ctx) {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true'
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin'
   };
 
   // Handle preflight
@@ -63,18 +57,7 @@ async function handleRequest(request, env, ctx) {
   try {
     // Health check
     if (path === '/health' || path === '/') {
-      return jsonResponse({ 
-        ok: true, 
-        timestamp: Date.now(),
-        env_check: {
-          has_client_id: !!env.GOOGLE_CLIENT_ID,
-          has_client_secret: !!env.GOOGLE_CLIENT_SECRET,
-          has_kv: !!env.SESSIONS,
-          frontend_url: env.FRONTEND_URL,
-          request_origin: requestOrigin,
-          allowed_origin: allowOrigin
-        }
-      }, 200, corsHeaders);
+      return jsonResponse({ ok: true }, 200, corsHeaders);
     }
 
     // OAuth routes
@@ -98,11 +81,7 @@ async function handleRequest(request, env, ctx) {
 
   } catch (error) {
     console.error('❌ Handler error:', error);
-    return jsonResponse({ 
-      error: 'internal_error', 
-      message: error.message,
-      path: path
-    }, 500, corsHeaders);
+    return jsonResponse({ error: 'internal_error' }, 500, corsHeaders);
   }
 }
 
@@ -115,6 +94,8 @@ function jsonResponse(data, status = 200, headers = {}) {
     status,
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
       ...headers
     }
   });
@@ -151,7 +132,10 @@ async function handleAuthStart(request, env, corsHeaders) {
   console.log('🔐 Starting OAuth flow');
   
   const url = new URL(request.url);
-  const state = url.searchParams.get('state') || randomId(16);
+  const state = url.searchParams.get('state');
+  if (!state || state.length > 128 || !/^[A-Za-z0-9_-]+$/.test(state)) {
+    return jsonResponse({ error: 'invalid_state' }, 400, corsHeaders);
+  }
 
   if (!env.GOOGLE_CLIENT_ID) {
     console.error('❌ Missing GOOGLE_CLIENT_ID');
@@ -192,7 +176,7 @@ async function handleAuthCallback(request, env, corsHeaders) {
 
   if (error) {
     console.error('❌ OAuth error:', error);
-    return Response.redirect(`${frontendUrl}?error=${error}`, 302);
+    return Response.redirect(`${frontendUrl}?error=${encodeURIComponent(error)}`, 302);
   }
 
   if (!code || !state) {
@@ -206,6 +190,11 @@ async function handleAuthCallback(request, env, corsHeaders) {
     console.error('❌ Invalid state');
     return Response.redirect(`${frontendUrl}?error=invalid_state`, 302);
   }
+
+  // This state is valid only for this one callback attempt.
+  // KV is eventually consistent, so deletion is best-effort replay reduction,
+  // not a guarantee of atomic one-time consumption across data centers.
+  await env.SESSIONS.delete(`state:${state}`);
 
   // Check credentials
   if (!env.GOOGLE_CLIENT_ID) {
