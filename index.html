@@ -200,6 +200,52 @@ body:hover .menu-button,
             transition: all 0.2s ease;
         }
 
+        /* Editing pen toggle (bottom-left) */
+        .pen-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #1a1a1a;
+            border: 1px solid #3a3a3a;
+            color: #888888;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: inherit;
+            z-index: 1000;
+            opacity: 0.45;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pen-toggle:hover { opacity: 0.9; }
+
+        .pen-toggle.on {
+            color: var(--pen-color, #c83c3c);
+            border-color: var(--pen-color, #c83c3c);
+            font-weight: 700;
+            opacity: 0.8;
+        }
+
+        .pen-color-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            color: #cccccc;
+            font-size: 13px;
+        }
+
+        .pen-color-row input[type="color"] {
+            width: 36px;
+            height: 24px;
+            border: none;
+            background: none;
+            padding: 0;
+            cursor: pointer;
+        }
+
         .save-status.saved {
             border-color: #2d5a2d;
             color: #66cc66;
@@ -999,6 +1045,8 @@ input[type="number"] {
 
     <div class="save-status saved" id="saveStatus">Saved</div>
 
+    <button class="pen-toggle" id="penToggle" title="Editing pen: type in bold dark red (Ctrl+E)">✎ Pen</button>
+
 <div class="menu-panel" id="menuPanel">
     <div class="menu-header">
         <div class="menu-title">Mellow Writer</div>
@@ -1016,6 +1064,19 @@ input[type="number"] {
             </div>
             <div class="status-message" id="driveStatus">Click "Setup Google Drive" to configure automatic backups</div>
             <div class="backup-timer" id="backupTimer"></div>
+        </div>
+
+        <div class="menu-section">
+            <h3>Editing Pen</h3>
+            <div class="menu-buttons">
+                <button class="menu-button-item" onclick="toggleEditPen()" id="penMenuBtn">Editing pen: On</button>
+            </div>
+            <div class="pen-color-row">
+                <label for="penColorInput">Pen colour</label>
+                <input type="color" id="penColorInput" value="#c83c3c">
+                <button class="menu-button-item" onclick="resetPenColor()" style="flex: 0 0 auto; padding: 4px 8px;">Reset</button>
+            </div>
+            <div class="status-message">While the pen is on, everything you type or paste is bold and in the pen colour, so your edits stand out from the original text. Toggle with Ctrl+E.</div>
         </div>
 
         <div class="menu-section">
@@ -1579,6 +1640,83 @@ function updateGoalDisplay() {
         goalSubtext.textContent = 'Click to set';
         todayStatItem.style.display = 'none';
     }
+}
+
+// ========================================
+// EDITING PEN
+// While the pen is on, typed and pasted text is bold and in the pen
+// colour (dark red by default), so edits stand out from the original.
+// It works through the browser's own typing style, so undo still works.
+// ========================================
+
+const PEN_DEFAULT_COLOR = '#c83c3c'; // a dark red that stays legible on the dark page
+const EDITOR_TEXT_COLOR = '#ddd9d4';
+let editPenOn = localStorage.getItem('bcmEditPen') !== 'off'; // on by default
+let editPenColor = localStorage.getItem('bcmEditPenColor') || PEN_DEFAULT_COLOR;
+
+function normalizeColor(value) {
+    if (!value) return '';
+    value = String(value).trim().toLowerCase();
+    const m = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (m) {
+        return '#' + [m[1], m[2], m[3]].map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('');
+    }
+    if (/^#[0-9a-f]{3}$/.test(value)) {
+        return '#' + value.slice(1).split('').map(c => c + c).join('');
+    }
+    return value;
+}
+
+function caretInEditor() {
+    const sel = window.getSelection();
+    return sel && sel.rangeCount > 0 && currentEditor.contains(sel.anchorNode);
+}
+
+// Set the browser's typing style so the next characters come out in pen style
+// (or back to plain, if the pen is off and the caret is inside earlier pen text).
+function applyPenTypingStyle() {
+    if (!caretInEditor()) return;
+    document.execCommand('styleWithCSS', false, false);
+    const color = normalizeColor(document.queryCommandValue('foreColor'));
+    const bold = document.queryCommandState('bold');
+    const pen = normalizeColor(editPenColor);
+    if (editPenOn) {
+        if (!bold) document.execCommand('bold', false, null);
+        if (color !== pen) document.execCommand('foreColor', false, editPenColor);
+    } else if (color === pen) {
+        document.execCommand('foreColor', false, EDITOR_TEXT_COLOR);
+        if (bold) document.execCommand('bold', false, null);
+    }
+}
+
+function updatePenUI() {
+    const btn = document.getElementById('penToggle');
+    const menuBtn = document.getElementById('penMenuBtn');
+    const colorInput = document.getElementById('penColorInput');
+    document.documentElement.style.setProperty('--pen-color', editPenColor);
+    if (btn) {
+        btn.classList.toggle('on', editPenOn);
+        btn.textContent = editPenOn ? '✎ Pen on' : '✎ Pen off';
+    }
+    if (menuBtn) menuBtn.textContent = editPenOn ? 'Editing pen: On' : 'Editing pen: Off';
+    if (colorInput) colorInput.value = normalizeColor(editPenColor);
+}
+
+function toggleEditPen() {
+    editPenOn = !editPenOn;
+    localStorage.setItem('bcmEditPen', editPenOn ? 'on' : 'off');
+    updatePenUI();
+    currentEditor.focus();
+}
+
+function setPenColor(color) {
+    editPenColor = color || PEN_DEFAULT_COLOR;
+    localStorage.setItem('bcmEditPenColor', editPenColor);
+    updatePenUI();
+}
+
+function resetPenColor() {
+    setPenColor(PEN_DEFAULT_COLOR);
 }
 
 // ========================================
@@ -3022,8 +3160,32 @@ overlay.addEventListener('click', () => {
 	currentEditor.addEventListener('paste', (e) => {
         e.preventDefault();
         const text = e.clipboardData.getData('text/plain');
+        applyPenTypingStyle();
         document.execCommand('insertText', false, text);
     });
+
+    // Editing pen: set the typing style just before each character goes in.
+    currentEditor.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key && e.key.length === 1) applyPenTypingStyle();
+    });
+    // Phones and IME keyboards compose text without ordinary key events.
+    currentEditor.addEventListener('compositionstart', applyPenTypingStyle);
+    currentEditor.addEventListener('beforeinput', (e) => {
+        if (e.inputType === 'insertText' && e.data && !e.isComposing) {
+            // Covers keyboards that don't report the key (e.g. "Unidentified").
+            if (!document.queryCommandState('bold') === editPenOn ||
+                (normalizeColor(document.queryCommandValue('foreColor')) === normalizeColor(editPenColor)) !== editPenOn) {
+                applyPenTypingStyle();
+            }
+        }
+    });
+
+    const penToggle = document.getElementById('penToggle');
+    if (penToggle) penToggle.addEventListener('click', toggleEditPen);
+    const penColorInput = document.getElementById('penColorInput');
+    if (penColorInput) penColorInput.addEventListener('input', (e) => setPenColor(e.target.value));
+    updatePenUI();
     
     document.addEventListener('mousedown', (e) => {
         if (floatingToolbar && !floatingToolbar.contains(e.target)) {
@@ -3098,6 +3260,11 @@ overlay.addEventListener('click', () => {
         if (e.ctrlKey && e.key === '[') {
             e.preventDefault();
             applyMarkdown('note');
+        }
+
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+            e.preventDefault();
+            toggleEditPen();
         }
     });
     

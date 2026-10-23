@@ -30,6 +30,7 @@ Your work saves automatically to your browser. Press **Ctrl+S** to download.
 - **Ctrl+I** - Italic  
 - **Ctrl+U** - Underline
 - **Ctrl+[** - Add note brackets
+- **Ctrl+E** - Toggle the editing pen
 - **Ctrl+S** - Force backup/download
 - **Ctrl+M** - Toggle menu
 - **Esc** - Exit focus mode
@@ -40,6 +41,12 @@ Your work saves automatically to your browser. Press **Ctrl+S** to download.
 - Bold, italic, underline
 - Headings
 - Note brackets for inline comments
+
+**Editing pen**
+- On by default: everything you type or paste comes out **bold and dark red**, so edits and notes stand out from the original text
+- Toggle with **Ctrl+E**, the **✎ Pen** button (bottom-left) or the menu; the app remembers your last choice
+- Change the pen colour in the menu (Reset brings back the default dark red)
+- Undo works as normal, and the colour is saved with the document (locally and in the Drive HTML backup; the .txt backup is plain text)
 
 **Focus Tools**
 - Ultra Focus Mode (full-screen, zero distractions)
