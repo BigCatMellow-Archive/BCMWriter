@@ -1,0 +1,26 @@
+name: Security regression checks
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  security-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Worker syntax
+        run: node --check worker/src/index.js
+      - name: Run OAuth and XSS regression tests
+        run: npm test --prefix worker
+      - name: Validate Python launcher syntax
+        run: python -m py_compile server.py
