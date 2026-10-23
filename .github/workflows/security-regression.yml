@@ -18,6 +18,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify manifest and lockfile are installable
+        run: npm ci --prefix worker --ignore-scripts --no-fund --no-audit
       - name: Validate Worker syntax
         run: node --check worker/src/index.js
       - name: Run OAuth and XSS regression tests
