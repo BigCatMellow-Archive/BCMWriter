@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bcmwriter-v1.1.0'; // editing pen
+const CACHE_NAME = 'bcmwriter-v1.1.1'; // security update
 const ASSETS_TO_CACHE = [
   '/BCMWriter/',
   '/BCMWriter/index.html',
@@ -79,7 +79,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName.startsWith('bcmwriter-') && cacheName !== CACHE_NAME) {
             console.log('Service Worker: Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
