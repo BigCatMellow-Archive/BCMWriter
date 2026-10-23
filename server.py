@@ -72,7 +72,7 @@ def check_port_available(port):
     import socket
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('localhost', port))
+            s.bind(('127.0.0.1', port))
             return True
     except OSError:
         return False
@@ -118,7 +118,7 @@ def start_server():
                 pass  # Suppress default logging
         
         try:
-            with socketserver.TCPServer(("", PORT), QuietHandler) as httpd:
+            with socketserver.TCPServer(("127.0.0.1", PORT), QuietHandler) as httpd:
                 url = f"http://localhost:{PORT}/{html_file}"
                 
                 print("🚀 Focus Writer Server Starting...")
