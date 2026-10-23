@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
 	<meta name="theme-color" content="#1a1a1a">
     <title>BCM Writer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1855,7 +1856,10 @@ function newDocument() {
 // ========================================
 
 function updateDriveStatus(message) {
-    document.getElementById('driveStatus').innerHTML = message;
+    const status = document.getElementById('driveStatus');
+    // Status strings may contain untrusted OAuth and API error text.
+    status.textContent = String(message);
+    status.style.whiteSpace = 'pre-line';
 }
 
 function startBackupTimer() {
@@ -2565,7 +2569,7 @@ function createFileInDrive(content, silent) {
         localStorage.setItem('focusWriterFileId', currentFileId);
         
         if (!silent) {
-            updateDriveStatus(`Backup created: ${BACKUP_FILE_NAME}<br>File ID: ${data.id}`);
+            updateDriveStatus(`Backup created: ${BACKUP_FILE_NAME}\nFile ID: ${data.id}`);
             showSaveStatus('backed-up');
         }
     })
@@ -3286,6 +3290,12 @@ const urlParams = new URLSearchParams(window.location.search);
 const sessionIdParam = urlParams.get('session_id');
 const errorParam = urlParams.get('error');
 
+// Session identifiers are bearer credentials: remove them from the address bar
+// before any asynchronous token request or optional UI work.
+if (sessionIdParam || errorParam) {
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+}
+
 if (errorParam) {
     updateDriveStatus('Authentication failed: ' + errorParam);
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -3295,7 +3305,7 @@ if (errorParam) {
 // OAUTH CALLBACK HANDLER  
 // ========================================
 if (sessionIdParam) {
-    console.log('🔐 OAuth callback detected, session_id:', sessionIdParam);
+    console.log('🔐 OAuth callback detected');
     
     // Verify CSRF state
     const stateParam = urlParams.get('state');
@@ -3382,8 +3392,6 @@ if (sessionIdParam) {
         });
     } else {
         console.error('❌ Invalid OAuth state');
-        console.error('   State param:', stateParam);
-        console.error('   Stored state:', storedState);
         updateDriveStatus('Invalid authentication state');
         window.history.replaceState({}, document.title, window.location.pathname);
     }
