@@ -359,9 +359,6 @@ async function handleGetToken(request, env, corsHeaders) {
 
   } catch (error) {
     console.error('❌ Get token error:', error);
-    return jsonResponse({ 
-      error: 'internal_error',
-      message: error.message 
-    }, 500, corsHeaders);
+    return jsonResponse({ error: 'internal_error' }, 500, corsHeaders);
   }
 }
