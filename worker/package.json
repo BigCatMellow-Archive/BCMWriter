@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "devDependencies": {
-    "wrangler": "^4.42.0"
+    "wrangler": "^4.152.0"
   },
   "scripts": {
     "test": "node --test"
