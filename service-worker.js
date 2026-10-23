@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bcmwriter-v1.0.1'; // Changed version to force update
+const CACHE_NAME = 'bcmwriter-v1.1.0'; // editing pen
 const ASSETS_TO_CACHE = [
   '/BCMWriter/',
   '/BCMWriter/index.html',
