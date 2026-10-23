@@ -22,5 +22,7 @@ jobs:
         run: node --check worker/src/index.js
       - name: Run OAuth and XSS regression tests
         run: npm test --prefix worker
+      - name: Audit dependencies for high-severity vulnerabilities
+        run: npm audit --prefix worker --audit-level=high
       - name: Validate Python launcher syntax
         run: python -m py_compile server.py
